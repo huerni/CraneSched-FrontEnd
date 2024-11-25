@@ -170,6 +170,13 @@ func GetStubToCtldForCfored(config *Config) protos.CraneCtldForCforedClient {
 	var serverAddr string
 	var stub protos.CraneCtldForCforedClient
 
+	tokenFilePath, err := ExpandPath(DefaultJwtTokenPath)
+	if err != nil {
+		log.Errorln("Failed to get home dir: " + err.Error())
+		os.Exit(ErrorGeneric)
+	}
+	TokenContent, _ := os.ReadFile(tokenFilePath)
+	token_auth := TokenAuth{Token: string(TokenContent), UseTls: config.UseTls}
 	if config.UseTls {
 		serverAddr = fmt.Sprintf("%s.%s:%s",
 			config.ControlMachine, config.SslConfig.DomainSuffix, config.CraneCtldForCforedListenPort)
@@ -191,7 +198,7 @@ func GetStubToCtldForCfored(config *Config) protos.CraneCtldForCforedClient {
 			Certificates: []tls.Certificate{cert},
 			RootCAs:      caPool,
 		})
-		conn, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(creds))
+		conn, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(creds), grpc.WithPerRPCCredentials(&token_auth))
 		if err != nil {
 			log.Errorln("Cannot connect to CraneCtld: " + err.Error())
 			os.Exit(ErrorBackend)
@@ -201,7 +208,7 @@ func GetStubToCtldForCfored(config *Config) protos.CraneCtldForCforedClient {
 	} else {
 		serverAddr = fmt.Sprintf("%s:%s", config.ControlMachine, config.CraneCtldForCforedListenPort)
 
-		conn, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		conn, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithPerRPCCredentials(&token_auth))
 		if err != nil {
 			log.Errorf("Cannot connect to CraneCtld %s: %s", serverAddr, err.Error())
 			os.Exit(ErrorBackend)
