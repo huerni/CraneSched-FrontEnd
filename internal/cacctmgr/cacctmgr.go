@@ -41,7 +41,7 @@ import (
 
 var (
 	userUid       uint32
-	stub          protos.CraneCtldClient
+	stub          protos.CraneCtldSecureClient
 	config        *util.Config
 	dbConfig      *util.InfluxDbConfig
 	dbConfigInitOnce sync.Once
@@ -1086,12 +1086,12 @@ func QueryInfluxDbDataByTags(eventConfig *util.InfluxDbConfig, clusterName strin
 	dataMap := make(map[string]*ResourceUsageRecord)
 	for result.Next() {
 		record := result.Record()
-	
+
 		clusterName := fmt.Sprintf("%v", record.ValueByKey("cluster_name"))
 		nodeName := fmt.Sprintf("%v", record.ValueByKey("node_name"))
 		field := fmt.Sprintf("%v", record.Field())
 		timestamp := record.Time()
-	
+
 		key := fmt.Sprintf("%s:%s:%s", clusterName, nodeName, timestamp)
 		if _, exists := dataMap[key]; !exists {
 			dataMap[key] = &ResourceUsageRecord {
@@ -1100,7 +1100,7 @@ func QueryInfluxDbDataByTags(eventConfig *util.InfluxDbConfig, clusterName strin
 				Timestamp:   timestamp,
 			}
 		}
-	
+
 		switch field {
 		case "uid":
 			if uid, ok := record.Value().(uint64); ok {
@@ -1119,8 +1119,8 @@ func QueryInfluxDbDataByTags(eventConfig *util.InfluxDbConfig, clusterName strin
 				dataMap[key].Reason = reason
 			}
 		}
-	}	
-	
+	}
+
 	if result.Err() != nil {
 		return nil, fmt.Errorf("query parsing error: %w", result.Err())
 	}
@@ -1129,7 +1129,7 @@ func QueryInfluxDbDataByTags(eventConfig *util.InfluxDbConfig, clusterName strin
 	for _, record := range dataMap {
 		records = append(records, record)
 	}
-	
+
 	if len(records) == 0 {
 		return nil, fmt.Errorf("no matching data available")
 	}
@@ -1137,13 +1137,13 @@ func QueryInfluxDbDataByTags(eventConfig *util.InfluxDbConfig, clusterName strin
 	sort.SliceStable(records, func(i, j int) bool {
 		return records[i].Timestamp.Before(records[j].Timestamp)
 	})
-	
+
 	return records, nil
 }
 
 
 func QueryEventInfoByNodes(nodeRegex string) util.CraneCmdError {
-	nodeNames := []string{} 
+	nodeNames := []string{}
 	var ok bool
 	if len(nodeRegex) != 0 {
 		nodeNames, ok = util.ParseHostList(nodeRegex)
@@ -1280,4 +1280,42 @@ func SortRecords(records []*ResourceUsageRecord) ([]*ResourceUsageRecord, error)
 	}
 
 	return filteredRecords, nil
+}
+
+func ResetUserCredential(value string) util.CraneCmdError {
+	var userList []string
+
+	if value != "all" {
+		var err error
+		userList, err = util.ParseStringParamList(value, ",")
+		if err != nil {
+			log.Errorf("Invalid user list specified: %v.\n", err)
+			return util.ErrorCmdArg
+		}
+	}
+
+	req := protos.ResetUserCredentialRequest{UserList: userList}
+	reply, err := stub.ResetUserCredential(context.Background(), &req)
+	if err != nil {
+		util.GrpcErrorPrintf(err, "Failed to reset user credential")
+		return util.ErrorNetwork
+	}
+	if FlagJson {
+		fmt.Println(util.FmtJson.FormatReply(reply))
+		if reply.GetOk() {
+			return util.ErrorSuccess
+		} else {
+			return util.ErrorBackend
+		}
+	}
+
+	if !reply.GetOk() {
+		for _, richError := range reply.RichErrorList {
+			fmt.Printf("%s: %s \n", richError.Description, util.ErrMsg(richError.Code))
+		}
+		return util.ErrorBackend
+	}
+
+	fmt.Printf("reset user %s credential succeeded.\n", value)
+	return util.ErrorSuccess
 }

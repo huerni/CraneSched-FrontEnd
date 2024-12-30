@@ -476,7 +476,11 @@ enum ErrCode {
   ERR_NOT_IN_ALLOWED_LIST = 67;  // The current account is not in the allowed account list for the partition.
   ERR_IN_DENIED_LIST = 68;       // The current account has been explicitly added to the deny list for the partition.
   ERR_EBPF = 69;
+
   ERR_SUPERVISOR = 70;
+  ERR_DUPLICATE_CERTIFICATE = 71;
+  ERR_REVOKE_CERTIFICATE = 72;
+  ERR_IDENTITY_MISMATCH = 73;
 }
 
 enum EntityType {
@@ -544,12 +548,11 @@ message UserInfo {
 
   uint32 uid = 1;
   string name = 2;
-  string password = 3;
-  string account = 4;
-  bool blocked = 5;
-  repeated AllowedPartitionQos allowed_partition_qos_list = 6;
-  repeated string coordinator_accounts = 7;
-  AdminLevel admin_level = 8;
+  string account = 3;
+  bool blocked = 4;
+  repeated AllowedPartitionQos allowed_partition_qos_list = 5;
+  repeated string coordinator_accounts = 6;
+  AdminLevel admin_level = 7;
 }
 
 message QosInfo {

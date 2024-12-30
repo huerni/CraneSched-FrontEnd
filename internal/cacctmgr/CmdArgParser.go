@@ -59,6 +59,8 @@ var (
 	FlagJson           bool
 	FlagConfigFilePath string
 
+	FlagResetCredential bool
+
 	// These flags are implemented,
 	// but not added to any cmd!
 	FlagNoHeader bool
@@ -75,8 +77,8 @@ var (
 			// The PersistentPreRun functions will be inherited and executed by children (sub-commands)
 			// if they do not declare their own.
 			util.DetectNetworkProxy()
-			config = util.ParseConfig(FlagConfigFilePath)
-			stub = util.GetStubToCtldByConfig(config)
+			config := util.ParseConfig(FlagConfigFilePath)
+			stub = util.GetStubToCtldSecureByConfig(config)
 			userUid = uint32(os.Getuid())
 		},
 	}
@@ -281,6 +283,7 @@ var (
 			if err != util.ErrorSuccess {
 				os.Exit(err)
 			}
+
 		},
 	}
 	modifyQosCmd = &cobra.Command{
@@ -468,6 +471,19 @@ var (
 			}
 		},
 	}
+
+	ResetCredsCmd = &cobra.Command{
+		Use:   "reset [flags] name",
+		Short: "Reset the user's credential.",
+		Long:  "",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			err := ResetUserCredential(args[0])
+			if err != util.ErrorSuccess {
+				os.Exit(err)
+			}
+		},
+	}
 )
 
 func ParseCmdArgs() {
@@ -502,7 +518,6 @@ func init() {
 		addCmd.AddCommand(addUserCmd)
 		{
 			addUserCmd.Flags().StringVarP(&FlagUser.Name, "name", "N", "", "Set the name of the user")
-			addUserCmd.Flags().StringVarP(&FlagUser.Password, "password", "P", "", "Set the password of the user")
 			addUserCmd.Flags().StringVarP(&FlagUser.Account, "account", "A", "", "Set the account of the user")
 			addUserCmd.Flags().StringSliceVarP(&FlagUserPartitions, "partition", "p", nil, "Set allowed partitions of the user (comma seperated list)")
 			addUserCmd.Flags().StringVarP(&FlagLevel, "level", "L", "none", "Set admin level (none/operator) of the user")
@@ -611,7 +626,6 @@ func init() {
 			modifyUserCmd.Flags().StringSliceVar(&FlagUserQosList, "set-allowed-qos-list", nil, "Overwrite allowed QoS list of the user (comma seperated list)")
 			modifyUserCmd.Flags().StringVar(&FlagQos.Name, "add-allowed-qos-list", "", "Add QoS to allowed QoS list")
 			modifyUserCmd.Flags().StringVar(&FlagQos.Name, "delete-allowed-qos-list", "", "Delete QoS from allowed QoS list")
-
 			// Other flags
 			modifyUserCmd.Flags().BoolVarP(&FlagForce, "force", "F", false, "Forced operation")
 
@@ -687,5 +701,11 @@ func init() {
 				log.Fatalln("Can't mark 'account' flag required")
 			}
 		}
+	}
+
+	/* -------------------------------------------------- resetCreds --------------------------------------------------- */
+	RootCmd.AddCommand(ResetCredsCmd)
+	{
+		ResetCredsCmd.Flags().BoolVarP(&FlagForce, "force", "", false, "Operation for handling mismatches between database and Vault data.")
 	}
 }

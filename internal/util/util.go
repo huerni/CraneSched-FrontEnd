@@ -32,14 +32,19 @@ type Config struct {
 	CranedNodeList      []ConfigNodesList `yaml:"Nodes"`
 
 	UseTls             bool   `yaml:"UseTls"`
-	ServerCertFilePath string `yaml:"ServerCertFilePath"`
-	ServerKeyFilePath  string `yaml:"ServerKeyFilePath"`
-	CaCertFilePath     string `yaml:"CaCertFilePath"`
-	DomainSuffix       string `yaml:"DomainSuffix"`
-
+	SslConfig                    SSLConfig    `yaml:"SSL"`
 	CraneBaseDir         string       `yaml:"CraneBaseDir"`
 	CranedCforedSockPath string       `yaml:"CranedCforedSockPath"`
 	Plugin               PluginConfig `yaml:"Plugin"`
+}
+
+type SSLConfig struct {
+	ExternalCertFilePath string `yaml:"CranectldExternalCertFilePath"`
+	InternalCertFilePath string `yaml:"CranectldInternalCertFilePath"`
+	ServerKeyFilePath    string `yaml:"ServerKeyFilePath"`
+	CforedCertFilePath   string `yaml:"CforedCertFilePath"`
+	CforedKeyFilePath    string `yaml:"CforedKeyFilePath"`
+	InternalCaFilePath   string `yaml:"InternalCaFilePath"`
 }
 
 type PluginConfig struct {
@@ -72,7 +77,7 @@ const (
 
 	DefaultPlugindSocketPath = "cplugind/cplugind.sock"
 
-	DefaultJwtTokenPath = "~/.config/crane/token.pem"
+	DefaultUserConfigPath = "~/.config/crane"
 
 	DefaultCforedSocketPath          = "craned/cfored.sock"
 	DefaultCforedServerListenAddress = "0.0.0.0"
