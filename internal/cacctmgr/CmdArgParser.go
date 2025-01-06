@@ -444,6 +444,19 @@ var (
 			}
 		},
 	}
+
+	ResetCredsCmd = &cobra.Command{
+		Use:   "reset [flags] name",
+		Short: "Reset the user's credential.",
+		Long:  "",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			err := ResetUserCredential(args[0])
+			if err != util.ErrorSuccess {
+				os.Exit(err)
+			}
+		},
+	}
 )
 
 func ParseCmdArgs() {
@@ -657,5 +670,11 @@ func init() {
 				log.Fatalln("Can't mark 'account' flag required")
 			}
 		}
+	}
+
+	/* -------------------------------------------------- resetCreds --------------------------------------------------- */
+	RootCmd.AddCommand(ResetCredsCmd)
+	{
+
 	}
 }
