@@ -230,6 +230,22 @@ func ProcessCbatchArgs(cmd *cobra.Command, args []CbatchArg) (bool, *protos.Task
 		task.GetBatchMeta().ErrorFilePattern = FlagStderrPath
 	}
 
+	if FlagArray != "" {
+		arrayTaskMap, maxRunTasks, err := util.ParseArrayParam(FlagArray)
+		if err != nil {
+			log.Errorf("Invalid argument: invalid --array: %v", err)
+			return false, nil
+		}
+
+		task.TaskArrayInfo = &protos.TaskArrayInfo{
+			ArrayTaskCnt:   uint32(len(arrayTaskMap)),
+			ArrayTaskMap:   arrayTaskMap,
+			MaxRunTasks:    maxRunTasks,
+			ArrayCompTasks: 0,
+			ArrayInx:       FlagArray,
+		}
+	}
+
 	if FlagExtraAttr != "" {
 		// Merge the extra attributes read from the file with the existing ones.
 		if !util.CheckTaskExtraAttr(FlagExtraAttr) {

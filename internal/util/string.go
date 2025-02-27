@@ -795,3 +795,76 @@ func ParseJobIdList(jobIds string, splitStr string) ([]uint32, error) {
 
 	return jobIdList, nil
 }
+
+func ParseArrayParam(parameters string) (map[uint32]uint32, uint32, error) {
+	result := make(map[uint32]uint32)
+	step := uint32(1)
+	maxRunTasks := uint32(0)
+
+	// Match range formats: 1-30  1-30%5  1-30:5
+	rangeRegex := regexp.MustCompile(`^([1-9]\d*)-([1-9]\d*)([:%](\d+))?$`)
+
+	// Match range formats: 1,2,3,4  1,2,3,4:5  1,2,3,4%5
+	listRegex := regexp.MustCompile(`^(\d+(,\d+)*)([:%](\d+))?$`)
+
+	if rangeRegex.MatchString(parameters) {
+		matches := rangeRegex.FindStringSubmatch(parameters)
+
+		left, _ := strconv.Atoi(matches[1])
+		right, _ := strconv.Atoi(matches[2])
+
+		if left > right {
+			return nil, 0, fmt.Errorf("invalid array task id range")
+		}
+
+		if matches[4] != "" {
+			value, _ := strconv.Atoi(matches[4])
+			if value <= 0 {
+				return nil, 0, fmt.Errorf("invalid step or max run tasks value")
+			}
+
+			if matches[3] == ":" {
+				step = uint32(value)
+			} else if matches[3] == "%" {
+				maxRunTasks = uint32(value)
+			}
+		}
+
+		for taskId := left; taskId <= right; taskId += int(step) {
+			result[uint32(taskId)] = 0
+		}
+
+	} else if listRegex.MatchString(parameters) {
+		matches := listRegex.FindStringSubmatch(parameters)
+		taskIds := strings.Split(matches[1], ",")
+
+		if matches[4] != "" {
+			value, _ := strconv.Atoi(matches[4])
+			if value <= 0 {
+				return nil, 0, fmt.Errorf("invalid step or additional info value")
+			}
+
+			if matches[3] == ":" {
+				step = uint32(value)
+			} else if matches[3] == "%" {
+				maxRunTasks = uint32(value)
+			}
+		}
+
+		for i := 0; i < len(taskIds); i += int(step) {
+			id, err := strconv.Atoi(taskIds[i])
+			if err != nil {
+				return nil, 0, fmt.Errorf("invalid task id: %s", taskIds[i])
+			}
+			result[uint32(id)] = 0
+		}
+	} else {
+		return nil, 0, fmt.Errorf("invalid array task id format")
+	}
+
+	if maxRunTasks == 0 {
+		maxRunTasks = uint32(len(result))
+	}
+
+	return result, maxRunTasks, nil
+}
