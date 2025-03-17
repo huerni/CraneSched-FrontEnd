@@ -796,8 +796,8 @@ func ParseJobIdList(jobIds string, splitStr string) ([]uint32, error) {
 	return jobIdList, nil
 }
 
-func ParseArrayParam(parameters string) (map[uint32]uint32, uint32, error) {
-	result := make(map[uint32]uint32)
+func ParseArrayParam(parameters string) ([]uint32, uint32, error) {
+	var result []uint32
 	step := uint32(1)
 	maxRunTasks := uint32(0)
 
@@ -831,7 +831,7 @@ func ParseArrayParam(parameters string) (map[uint32]uint32, uint32, error) {
 		}
 
 		for taskId := left; taskId <= right; taskId += int(step) {
-			result[uint32(taskId)] = 0
+			result = append(result, uint32(taskId))
 		}
 
 	} else if listRegex.MatchString(parameters) {
@@ -856,7 +856,7 @@ func ParseArrayParam(parameters string) (map[uint32]uint32, uint32, error) {
 			if err != nil {
 				return nil, 0, fmt.Errorf("invalid task id: %s", taskIds[i])
 			}
-			result[uint32(id)] = 0
+			result = append(result, uint32(id))
 		}
 	} else {
 		return nil, 0, fmt.Errorf("invalid array task id format")

@@ -231,17 +231,17 @@ func ProcessCbatchArgs(cmd *cobra.Command, args []CbatchArg) (bool, *protos.Task
 	}
 
 	if FlagArray != "" {
-		arrayTaskMap, maxRunTasks, err := util.ParseArrayParam(FlagArray)
+		arrayTaskList, maxRunTasks, err := util.ParseArrayParam(FlagArray)
 		if err != nil {
 			log.Errorf("Invalid argument: invalid --array: %v", err)
 			return false, nil
 		}
 
 		task.TaskArrayInfo = &protos.TaskArrayInfo{
-			ArrayTaskCnt:   uint32(len(arrayTaskMap)),
-			ArrayTaskMap:   arrayTaskMap,
+			ArrayTaskCnt:   uint32(len(arrayTaskList)),
 			MaxRunTasks:    maxRunTasks,
 			ArrayCompTasks: 0,
+			ArrayTaskList:  arrayTaskList,
 			ArrayInx:       FlagArray,
 		}
 	}

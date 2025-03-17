@@ -108,7 +108,7 @@ func init() {
 	RootCmd.Flags().BoolVar(&FlagSelf, "self", false, "Display only the jobs submitted by current user")
 
 	RootCmd.Flags().StringVarP(&FlagFormat, "format", "o", "",
-	`Specify the output format.
+		`Specify the output format.
 	Fields are identified by a percent sign (%) followed by a character or string. 
 	Use a dot (.) and a number between % and the format character or string to specify a minimum width for the field.
 	

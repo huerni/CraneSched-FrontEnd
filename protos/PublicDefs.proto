@@ -215,6 +215,8 @@ message TaskToD {
   double cpus_per_task = 23;
 
   bool get_user_env = 24;
+
+  TaskArrayInfo task_array_info = 25;
 }
 
 message BatchTaskAdditionalMeta {
@@ -249,7 +251,7 @@ message TaskArrayInfo {
   uint32 array_task_cnt = 3;
   uint32 array_comp_tasks = 4;
   uint32 max_run_tasks = 5;
-  map<uint32, uint32> array_task_map = 6;
+  repeated uint32 array_task_list = 6;
   string array_inx = 7;
 }
 
@@ -298,7 +300,7 @@ message TaskInfo {
   google.protobuf.Duration elapsed_time = 37;
   repeated string execution_node = 38;
 
-  TaskArrayInfo array_info = 39;
+  TaskArrayInfo task_array_info = 39;
 }
 
 message PartitionInfo {
