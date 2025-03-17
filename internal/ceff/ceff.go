@@ -457,7 +457,7 @@ func PrintTaskInfoInJson(taskInfo *protos.TaskInfo, records []*ResourceUsageReco
 }
 
 func QueryTasksInfoByIds(jobIds string) util.CraneCmdError {
-	jobIdList, err := util.ParseJobIdList(jobIds, ",")
+	jobIdList, _, err := util.ParseJobIdList(jobIds, ",")
 	if err != nil {
 		log.Errorf("Invalid job list specified: %v", err)
 		return util.ErrorCmdArg

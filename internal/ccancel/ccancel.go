@@ -50,7 +50,7 @@ func CancelTask(args []string) util.CraneCmdError {
 	req.FilterTaskName = FlagJobName
 
 	if len(args) > 0 {
-		taskIds, err := util.ParseJobIdList(args[0], ",")
+		taskIds, _, err := util.ParseJobIdList(args[0], ",")
 		if err != nil {
 			log.Errorf("Invalid job list specified: %v.\n", err)
 			return util.ErrorCmdArg

@@ -253,7 +253,7 @@ func ShowJobs(jobIds string, queryAll bool) util.CraneCmdError {
 	var err error
 
 	if !queryAll {
-		jobIdList, err = util.ParseJobIdList(jobIds, ",")
+		jobIdList, _, err = util.ParseJobIdList(jobIds, ",")
 		if err != nil {
 			log.Errorf("Invalid job list specified: %v.\n", err)
 			return util.ErrorCmdArg
@@ -465,7 +465,7 @@ func ChangeTaskTimeLimit(taskStr string, timeLimit string) util.CraneCmdError {
 		return util.ErrorCmdArg
 	}
 
-	taskIds, err := util.ParseJobIdList(taskStr, ",")
+	taskIds, _, err := util.ParseJobIdList(taskStr, ",")
 	if err != nil {
 		log.Errorf("Invalid job list specified: %v.\n", err)
 		return util.ErrorCmdArg
@@ -498,7 +498,7 @@ func ChangeTaskTimeLimit(taskStr string, timeLimit string) util.CraneCmdError {
 }
 
 func HoldReleaseJobs(jobs string, hold bool) util.CraneCmdError {
-	jobList, err := util.ParseJobIdList(jobs, ",")
+	jobList, _, err := util.ParseJobIdList(jobs, ",")
 	if err != nil {
 		log.Errorf("Invalid job list specified: %v.\n", err)
 		return util.ErrorCmdArg
@@ -556,7 +556,7 @@ func ChangeTaskPriority(taskStr string, priority float64) util.CraneCmdError {
 		return util.ErrorCmdArg
 	}
 
-	taskIds, err := util.ParseJobIdList(taskStr, ",")
+	taskIds, _, err := util.ParseJobIdList(taskStr, ",")
 	if err != nil {
 		log.Errorln(err)
 		return util.ErrorCmdArg

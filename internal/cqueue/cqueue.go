@@ -103,12 +103,13 @@ func QueryTasksInfo() (*protos.QueryTasksInfoReply, util.CraneCmdError) {
 	}
 
 	if FlagFilterJobIDs != "" {
-		filterJobIdList, err := util.ParseJobIdList(FlagFilterJobIDs, ",")
+		filterJobIdList, filterArrayTaskIdList, err := util.ParseJobIdList(FlagFilterJobIDs, ",")
 		if err != nil {
 			log.Errorf("Invalid job list specified: %v.\n", err)
 			return reply, util.ErrorCmdArg
 		}
 		req.FilterTaskIds = filterJobIdList
+		req.FilterArrayTaskIds = filterArrayTaskIdList
 		req.NumLimit = uint32(len(filterJobIdList))
 	}
 	if FlagNumLimit != 0 {

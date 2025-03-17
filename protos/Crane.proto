@@ -452,6 +452,7 @@ message QueryTasksInfoRequest{
   TimeInterval filter_submit_time_interval = 9;
   TimeInterval filter_start_time_interval = 10;
   TimeInterval filter_end_time_interval = 11;
+  repeated uint32 filter_array_task_ids = 12;
 
   bool option_include_completed_tasks = 15;
 }

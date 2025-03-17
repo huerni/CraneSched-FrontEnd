@@ -82,12 +82,13 @@ func QueryJob() util.CraneCmdError {
 	}
 
 	if FlagFilterJobIDs != "" {
-		filterJobIdList, err := util.ParseJobIdList(FlagFilterJobIDs, ",")
+		filterJobIdList, filterArrayTaskIdList, err := util.ParseJobIdList(FlagFilterJobIDs, ",")
 		if err != nil {
 			log.Errorf("Invalid job list specified: %v.\n", err)
 			return util.ErrorCmdArg
 		}
 		request.FilterTaskIds = filterJobIdList
+		request.FilterArrayTaskIds = filterArrayTaskIdList
 	}
 
 	if FlagFilterUsers != "" {

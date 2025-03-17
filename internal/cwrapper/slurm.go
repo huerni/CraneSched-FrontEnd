@@ -580,7 +580,7 @@ func scontrol() *cobra.Command {
 						// If not "job" or "jobid", it should be a job id list
 						// Trim is needed as slurm supports "hold ,1,2,3" but crane doesn't
 						convertedArgs[i] = strings.Trim(convertedArgs[i], ",")
-						if _, err := util.ParseJobIdList(convertedArgs[i], ","); err != nil {
+						if _, _, err := util.ParseJobIdList(convertedArgs[i], ","); err != nil {
 							log.Errorf("Invalid job list specified: %v.\n", err)
 							os.Exit(util.ErrorCmdArg)
 						}
@@ -595,7 +595,7 @@ func scontrol() *cobra.Command {
 						// If not "job" or "jobid", it should be a job id list
 						// Trim is needed as slurm supports "release ,1,2,3" but crane doesn't
 						convertedArgs[i] = strings.Trim(convertedArgs[i], ",")
-						if _, err := util.ParseJobIdList(convertedArgs[i], ","); err != nil {
+						if _, _, err := util.ParseJobIdList(convertedArgs[i], ","); err != nil {
 							log.Errorf("Invalid job list specified: %v.\n", err)
 							os.Exit(util.ErrorCmdArg)
 						}

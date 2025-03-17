@@ -782,18 +782,33 @@ func ParseStringParamList(parameters string, splitStr string) ([]string, error) 
 	return parameterList, nil
 }
 
-func ParseJobIdList(jobIds string, splitStr string) ([]uint32, error) {
+func ParseJobIdList(jobIds string, splitStr string) ([]uint32, []uint32, error) {
 	jobIdStrList := strings.Split(jobIds, splitStr)
 	var jobIdList []uint32
+	var arrayTaskIdList []uint32
+
 	for i := 0; i < len(jobIdStrList); i++ {
-		jobId, err := strconv.ParseUint(jobIdStrList[i], 10, 32)
+		filterTaskStrList := strings.Split(jobIdStrList[i], "_")
+		if len(filterTaskStrList) > 2 {
+			return nil, nil, fmt.Errorf("invalid job id format: %s", jobIdStrList[i])
+		}
+		if len(filterTaskStrList) > 1 {
+			arrayTaskId, err := strconv.ParseUint(filterTaskStrList[1], 10, 32)
+			if err != nil {
+				return nil, nil, fmt.Errorf("invalid job id format: %s", jobIdStrList[i])
+			}
+			arrayTaskIdList = append(arrayTaskIdList, uint32(arrayTaskId))
+		} else {
+			arrayTaskIdList = append(arrayTaskIdList, math.MaxUint32)
+		}
+		jobId, err := strconv.ParseUint(filterTaskStrList[0], 10, 32)
 		if err != nil || jobId == 0 {
-			return nil, fmt.Errorf("invalid job id \"%s\"", jobIdStrList[i])
+			return nil, nil, fmt.Errorf("invalid job id \"%s\"", jobIdStrList[i])
 		}
 		jobIdList = append(jobIdList, uint32(jobId))
 	}
 
-	return jobIdList, nil
+	return jobIdList, arrayTaskIdList, nil
 }
 
 func ParseArrayParam(parameters string) ([]uint32, uint32, error) {
