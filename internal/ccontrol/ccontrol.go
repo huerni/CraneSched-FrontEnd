@@ -250,7 +250,7 @@ func ShowReservations(reservationName string, queryAll bool) util.CraneCmdError 
 		Uid:             uint32(os.Getuid()),
 		ReservationName: reservationName,
 	}
-	reply, err := stub.QueryReservationInfo(context.Background(), req)
+	reply, err := secureStub.QueryReservationInfo(context.Background(), req)
 	if err != nil {
 		util.GrpcErrorPrintf(err, "Failed to show reservations")
 		return util.ErrorNetwork
@@ -430,18 +430,18 @@ func ShowJobs(jobIds string, queryAll bool) util.CraneCmdError {
 
 		if taskInfo.Status == protos.TaskStatus_Running {
 			fmt.Printf("\tAllocRes=node=%d cpu=%.2f mem=%v gres=%s\n",
-			taskInfo.NodeNum,
-			taskInfo.AllocatedResView.AllocatableRes.CpuCoreLimit,
-			util.FormatMemToMB(taskInfo.AllocatedResView.AllocatableRes.MemoryLimitBytes),
-			formatDeviceMap(taskInfo.AllocatedResView.DeviceMap),
+				taskInfo.NodeNum,
+				taskInfo.AllocatedResView.AllocatableRes.CpuCoreLimit,
+				util.FormatMemToMB(taskInfo.AllocatedResView.AllocatableRes.MemoryLimitBytes),
+				formatDeviceMap(taskInfo.AllocatedResView.DeviceMap),
 			)
 		}
 
 		fmt.Printf("\tReqNodeList=%v ExecludeNodeList=%v\n"+
-		"\tExclusive=%v Comment=%v\n",
-		formatHostNameStr(util.HostNameListToStr(taskInfo.GetReqNodes())),
-		formatHostNameStr(util.HostNameListToStr(taskInfo.GetExcludeNodes())),
-		strconv.FormatBool(taskInfo.Exclusive), formatJobComment(taskInfo.ExtraAttr))
+			"\tExclusive=%v Comment=%v\n",
+			formatHostNameStr(util.HostNameListToStr(taskInfo.GetReqNodes())),
+			formatHostNameStr(util.HostNameListToStr(taskInfo.GetExcludeNodes())),
+			strconv.FormatBool(taskInfo.Exclusive), formatJobComment(taskInfo.ExtraAttr))
 	}
 
 	// If any job is requested but not returned, remind the user
@@ -819,7 +819,7 @@ func CreateReservation() util.CraneCmdError {
 		}
 	}
 
-	reply, err := stub.CreateReservation(context.Background(), req)
+	reply, err := secureStub.CreateReservation(context.Background(), req)
 	if err != nil {
 		util.GrpcErrorPrintf(err, "Failed to create reservation")
 		return util.ErrorNetwork
@@ -848,7 +848,7 @@ func DeleteReservation(ReservationName string) util.CraneCmdError {
 		Uid:             uint32(os.Getuid()),
 		ReservationName: ReservationName,
 	}
-	reply, err := stub.DeleteReservation(context.Background(), req)
+	reply, err := secureStub.DeleteReservation(context.Background(), req)
 	if err != nil {
 		util.GrpcErrorPrintf(err, "Failed to delete reservation")
 		return util.ErrorNetwork

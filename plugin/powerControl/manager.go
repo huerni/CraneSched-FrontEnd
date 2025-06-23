@@ -35,7 +35,7 @@ type PowerManager struct {
 	nodesInfo      sync.Map
 	nodesInfoMutex sync.Mutex
 
-	ctldClient protos.CraneCtldClient
+	ctldClient protos.CraneCtldSecureClient
 
 	stopChan chan struct{}
 }
@@ -139,7 +139,7 @@ func (c *PowerManager) GetNodesByState(states ...NodeState) []string {
 func (c *PowerManager) initCtldClient() {
 	configPath := util.DefaultConfigPath
 	config := util.ParseConfig(configPath)
-	c.ctldClient = util.GetStubToCtldByConfig(config)
+	c.ctldClient = util.GetStubToCtldSecureByConfig(config)
 }
 
 func (c *PowerManager) start() (int, int, int, int) {

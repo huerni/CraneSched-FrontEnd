@@ -874,6 +874,8 @@ service CraneCtldSecure {
   rpc ModifyTask(ModifyTaskRequest) returns (ModifyTaskReply);
   rpc ModifyNode(ModifyCranedStateRequest) returns (ModifyCranedStateReply);
   rpc ModifyPartitionAcl(ModifyPartitionAclRequest) returns (ModifyPartitionAclReply);
+  rpc CreateReservation(CreateReservationRequest) returns (CreateReservationReply);
+  rpc DeleteReservation(DeleteReservationRequest) returns (DeleteReservationReply);
 
   /* RPCs called from cacctmgr */
   rpc AddAccount(AddAccountRequest) returns (AddAccountReply);
@@ -891,10 +893,11 @@ service CraneCtldSecure {
   rpc ModifyAccount(ModifyAccountRequest) returns (ModifyAccountReply);
   rpc ModifyUser(ModifyUserRequest) returns (ModifyUserReply);
   rpc ModifyQos(ModifyQosRequest) returns (ModifyQosReply);
-
   rpc BlockAccountOrUser(BlockAccountOrUserRequest) returns (BlockAccountOrUserReply);
-
   rpc ResetUserCredential(ResetUserCredentialRequest) returns (ResetUserCredentialReply);
+
+  /* RPC called form plugin */
+  rpc PowerStateChange(PowerStateChangeRequest) returns (PowerStateChangeReply);
 }
 
 // The service is completely open.
@@ -908,14 +911,9 @@ service CraneCtldPlain {
 
   /* common RPCs */
   rpc QueryTasksInfo(QueryTasksInfoRequest) returns (QueryTasksInfoReply);
-  rpc CreateReservation(CreateReservationRequest) returns (CreateReservationReply);
-  rpc DeleteReservation(DeleteReservationRequest) returns (DeleteReservationReply);
 
   /* RPCS called from PKI request */
   rpc SignUserCertificate(SignUserCertificateRequest) returns (SignUserCertificateResponse);
-
-  /* RPC called form plugin */
-  rpc PowerStateChange(PowerStateChangeRequest) returns (PowerStateChangeReply);
 }
 
 service CraneCtldForCraned {
