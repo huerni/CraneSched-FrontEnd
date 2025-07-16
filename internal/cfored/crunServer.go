@@ -20,6 +20,8 @@ package cfored
 
 import (
 	"CraneFrontEnd/generated/protos"
+	"fmt"
+	"google.golang.org/grpc/peer"
 	"io"
 	"math"
 	"sync/atomic"
@@ -44,6 +46,15 @@ func (cforedServer *GrpcCforedServer) CrunStream(toCrunStream protos.CraneForeD_
 	var crunPid int32
 	var taskId uint32
 	var reply *protos.StreamCrunReply
+
+	ctx := toCrunStream.Context()
+	p, ok := peer.FromContext(ctx)
+	if ok {
+		if auth, ok := p.AuthInfo.(*UnixPeerAuthInfo); ok {
+			fmt.Printf("peer UID: %d\n", auth.UID)
+			// 做基于 UID 的授权
+		}
+	}
 
 	var execCranedIds []string
 	var crunPty bool

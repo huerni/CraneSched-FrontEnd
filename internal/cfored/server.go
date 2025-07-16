@@ -23,7 +23,9 @@ import (
 	"CraneFrontEnd/internal/util"
 	"context"
 	"fmt"
+	"google.golang.org/grpc/credentials"
 	"io"
+	"net"
 	"os"
 	"os/signal"
 	"sync"
@@ -424,6 +426,54 @@ func (cforedServer *GrpcCforedServer) QueryTaskIdFromPort(ctx context.Context,
 	}
 }
 
+type UnixPeerAuthInfo struct {
+	UID uint32
+	GID uint32
+	PID int32
+}
+
+func (a *UnixPeerAuthInfo) AuthType() string { return "unix-peer" }
+
+type UnixPeerCredentials struct{}
+
+func (c *UnixPeerCredentials) ServerHandshake(conn net.Conn) (net.Conn, credentials.AuthInfo, error) {
+	// 获取底层的 unix.Conn
+	uconn, ok := conn.(*net.UnixConn)
+	if !ok {
+		return nil, nil, fmt.Errorf("not a unix socket")
+	}
+	// 获取文件描述符
+	file, err := uconn.File()
+	if err != nil {
+		return nil, nil, err
+	}
+	defer file.Close()
+
+	// 获取 peer credentials
+	ucred, err := syscall.GetsockoptUcred(int(file.Fd()), syscall.SOL_SOCKET, syscall.SO_PEERCRED)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// 返回 AuthInfo
+	return conn, &UnixPeerAuthInfo{
+		UID: ucred.Uid,
+		GID: ucred.Gid,
+		PID: ucred.Pid,
+	}, nil
+}
+
+func (c *UnixPeerCredentials) ClientHandshake(ctx context.Context, addr string, conn net.Conn) (net.Conn, credentials.AuthInfo, error) {
+	// 客户端可以简单返回，或者做类似校验
+	return conn, &UnixPeerAuthInfo{}, nil
+}
+
+func (c *UnixPeerCredentials) Info() credentials.ProtocolInfo {
+	return credentials.ProtocolInfo{SecurityProtocol: "unix-peer"}
+}
+func (c *UnixPeerCredentials) Clone() credentials.TransportCredentials { return c }
+func (c *UnixPeerCredentials) OverrideServerName(s string) error       { return nil }
+
 func startGrpcServer(config *util.Config, wgAllRoutines *sync.WaitGroup) {
 	socket, err := util.GetUnixSocket(config.CranedCforedSockPath, 0666)
 	if err != nil {
@@ -433,9 +483,11 @@ func startGrpcServer(config *util.Config, wgAllRoutines *sync.WaitGroup) {
 
 	log.Tracef("Listening on unix socket %s", config.CranedCforedSockPath)
 
+	creds := &UnixPeerCredentials{}
 	serverOptions := []grpc.ServerOption{
 		grpc.KeepaliveParams(util.ServerKeepAliveParams),
 		grpc.KeepaliveEnforcementPolicy(util.ServerKeepAlivePolicy),
+		grpc.Creds(creds),
 	}
 	grpcServer := grpc.NewServer(serverOptions...)
 
