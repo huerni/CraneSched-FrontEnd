@@ -95,7 +95,7 @@ func StartCfored() {
 	var wgAllRoutines sync.WaitGroup
 
 	ctldClient := &GrpcCtldClient{
-		ctldClientStub:   util.GetStubToCtldForCfored(config),
+		ctldClientStub:   util.GetStubToCtldForInternalByConfig(config),
 		ctldReplyChannel: make(chan *protos.StreamCtldReply, 8),
 	}
 	wgAllRoutines.Add(1)

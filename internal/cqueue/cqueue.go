@@ -39,7 +39,7 @@ var (
 	stub protos.CraneCtldPlainClient
 )
 
-func QueryTasksInfo() (*protos.QueryTasksInfoReply, util.CraneCmdError) {
+func QueryTasksInfo() (*protos.QueryTasksInfoReply, error) {
 	config := util.ParseConfig(FlagConfigFilePath)
 	stub = util.GetStubToCtldPlain(config)
 	req := protos.QueryTasksInfoRequest{OptionIncludeCompletedTasks: false}
@@ -48,8 +48,10 @@ func QueryTasksInfo() (*protos.QueryTasksInfoReply, util.CraneCmdError) {
 	if FlagFilterStates != "" {
 		stateList, err := util.ParseInRamTaskStatusList(FlagFilterStates)
 		if err != nil {
-			log.Errorln(err)
-			return reply, util.ErrorCmdArg
+			return reply, &util.CraneError{
+				Code:    util.ErrorCmdArg,
+				Message: err.Error(),
+			}
 		}
 		req.FilterTaskStates = stateList
 	}
@@ -57,48 +59,60 @@ func QueryTasksInfo() (*protos.QueryTasksInfoReply, util.CraneCmdError) {
 	if FlagSelf {
 		cu, err := user.Current()
 		if err != nil {
-			log.Errorf("Failed to get current username: %v\n", err)
-			return reply, util.ErrorCmdArg
+			return reply, &util.CraneError{
+				Code:    util.ErrorCmdArg,
+				Message: fmt.Sprintf("Failed to get current username: %s.", err),
+			}
 		}
 		req.FilterUsers = []string{cu.Username}
 	}
 	if FlagFilterJobNames != "" {
 		filterJobNameList, err := util.ParseStringParamList(FlagFilterJobNames, ",")
 		if err != nil {
-			log.Errorf("Invalid job name list specified: %v.\n", err)
-			return reply, util.ErrorCmdArg
+			return reply, &util.CraneError{
+				Code:    util.ErrorCmdArg,
+				Message: fmt.Sprintf("Invalid job name list specified: %s.", err),
+			}
 		}
 		req.FilterTaskNames = filterJobNameList
 	}
 	if FlagFilterUsers != "" {
 		filterUserList, err := util.ParseStringParamList(FlagFilterUsers, ",")
 		if err != nil {
-			log.Errorf("Invalid user list specified: %v.\n", err)
-			return reply, util.ErrorCmdArg
+			return reply, &util.CraneError{
+				Code:    util.ErrorCmdArg,
+				Message: fmt.Sprintf("Invalid user list specified: %s.", err),
+			}
 		}
 		req.FilterUsers = filterUserList
 	}
 	if FlagFilterQos != "" {
 		filterJobQosList, err := util.ParseStringParamList(FlagFilterQos, ",")
 		if err != nil {
-			log.Errorf("Invalid Qos list specified: %v.\n", err)
-			return reply, util.ErrorCmdArg
+			return reply, &util.CraneError{
+				Code:    util.ErrorCmdArg,
+				Message: fmt.Sprintf("Invalid Qos list specified: %s.", err),
+			}
 		}
 		req.FilterQos = filterJobQosList
 	}
 	if FlagFilterAccounts != "" {
 		filterAccountList, err := util.ParseStringParamList(FlagFilterAccounts, ",")
 		if err != nil {
-			log.Errorf("Invalid account list specified: %v.\n", err)
-			return reply, util.ErrorCmdArg
+			return reply, &util.CraneError{
+				Code:    util.ErrorCmdArg,
+				Message: fmt.Sprintf("Invalid account list specified: %s.", err),
+			}
 		}
 		req.FilterAccounts = filterAccountList
 	}
 	if FlagFilterPartitions != "" {
 		filterPartitionList, err := util.ParseStringParamList(FlagFilterPartitions, ",")
 		if err != nil {
-			log.Errorf("Invalid partition list specified: %v.\n", err)
-			return reply, util.ErrorCmdArg
+			return reply, &util.CraneError{
+				Code:    util.ErrorCmdArg,
+				Message: fmt.Sprintf("Invalid partition list specified: %s.", err),
+			}
 		}
 		req.FilterPartitions = filterPartitionList
 	}
@@ -106,8 +120,10 @@ func QueryTasksInfo() (*protos.QueryTasksInfoReply, util.CraneCmdError) {
 	if FlagFilterJobIDs != "" {
 		filterJobIdList, err := util.ParseJobIdList(FlagFilterJobIDs, ",")
 		if err != nil {
-			log.Errorf("Invalid job list specified: %v.\n", err)
-			return reply, util.ErrorCmdArg
+			return reply, &util.CraneError{
+				Code:    util.ErrorCmdArg,
+				Message: fmt.Sprintf("Invalid job list specified: %s.", err),
+			}
 		}
 		req.FilterTaskIds = filterJobIdList
 		req.NumLimit = uint32(len(filterJobIdList))
@@ -119,20 +135,20 @@ func QueryTasksInfo() (*protos.QueryTasksInfoReply, util.CraneCmdError) {
 	reply, err := stub.QueryTasksInfo(context.Background(), &req)
 	if err != nil {
 		util.GrpcErrorPrintf(err, "Failed to query job queue")
-		return reply, util.ErrorNetwork
+		return reply, &util.CraneError{Code: util.ErrorNetwork}
 	}
 
-	return reply, util.ErrorSuccess
+	return reply, nil
 }
 
-func QueryTableOutput(reply *protos.QueryTasksInfoReply) util.CraneCmdError {
+func QueryTableOutput(reply *protos.QueryTasksInfoReply) error {
 	table := tablewriter.NewWriter(os.Stdout)
 	util.SetBorderlessTable(table)
 	var header []string
 	tableData := make([][]string, len(reply.TaskInfoList))
 	if FlagFull {
 		header = []string{"JobId", "JobName", "UserName", "Partition",
-			"Account", "NodeNum", "ReqCPUs","ReqMemPerNode", "AllocCPUs", "AllocMemPerNode", "Status", "Time", "TimeLimit",
+			"Account", "NodeNum", "ReqCPUs", "ReqMemPerNode", "AllocCPUs", "AllocMemPerNode", "Status", "Time", "TimeLimit",
 			"StartTime", "SubmitTime", "Type", "Qos", "Exclusive", "Held", "Priority", "NodeList/Reason"}
 		for i := range reply.TaskInfoList {
 			taskInfo := reply.TaskInfoList[i]
@@ -272,21 +288,21 @@ func QueryTableOutput(reply *protos.QueryTasksInfoReply) util.CraneCmdError {
 
 	table.AppendBulk(tableData)
 	table.Render()
-	return util.ErrorSuccess
+	return nil
 }
 
-func Query() util.CraneCmdError {
+func Query() error {
 	reply, err := QueryTasksInfo()
-	if err != util.ErrorSuccess {
+	if err != nil {
 		return err
 	}
 
 	if FlagJson {
 		fmt.Println(util.FmtJson.FormatReply(reply))
 		if reply.GetOk() {
-			return util.ErrorSuccess
+			return nil
 		} else {
-			return util.ErrorBackend
+			return &util.CraneError{Code: util.ErrorBackend}
 		}
 	}
 
@@ -350,9 +366,9 @@ func ProcessNodeList(task *protos.TaskInfo) string {
 func ProcessAllocMemPerNode(task *protos.TaskInfo) string {
 	if task.NodeNum == 0 {
 		return "0"
-   	}
-   	return util.FormatMemToMB(task.AllocatedResView.AllocatableRes.MemoryLimitBytes /
-			uint64(task.NodeNum))
+	}
+	return util.FormatMemToMB(task.AllocatedResView.AllocatableRes.MemoryLimitBytes /
+		uint64(task.NodeNum))
 }
 
 // 'M' group
@@ -461,11 +477,10 @@ var fieldMap = map[string]FieldProcessor{
 	"account": {"Account", ProcessAccount},
 
 	// 'c' group
-	"c":             {"AllocCpus", ProcessAllocCpus},
-	"alloccpus":     {"AllocCpus", ProcessAllocCpus},
-	"C":             {"ReqCpus", ProcessReqCPUs},
-	"reqcpus":       {"ReqCpus", ProcessReqCPUs},
-
+	"c":         {"AllocCpus", ProcessAllocCpus},
+	"alloccpus": {"AllocCpus", ProcessAllocCpus},
+	"C":         {"ReqCpus", ProcessReqCPUs},
+	"reqcpus":   {"ReqCpus", ProcessReqCPUs},
 
 	// 'e' group
 	"e":           {"ElapsedTime", ProcessElapsedTime},
@@ -542,8 +557,8 @@ var fieldMap = map[string]FieldProcessor{
 	// 'x' group
 	"x":            {"ExcludeNodes", ProcessExcludeNodes},
 	"excludenodes": {"ExcludeNodes", ProcessExcludeNodes},
-	"X":          {"Exclusive", ProcessExclusive},
-	"exclusive":  {"Exclusive", ProcessExclusive},
+	"X":            {"Exclusive", ProcessExclusive},
+	"exclusive":    {"Exclusive", ProcessExclusive},
 }
 
 // FormatData formats the output data according to the format string.
@@ -634,16 +649,18 @@ func FormatData(reply *protos.QueryTasksInfoReply) (header []string, tableData [
 	return util.FormatTable(tableOutputWidth, tableOutputHeader, tableOutputCell)
 }
 
-func loopedQuery(iterate uint64) util.CraneCmdError {
+func loopedQuery(iterate uint64) error {
 	interval, err := time.ParseDuration(strconv.FormatUint(iterate, 10) + "s")
 	if err != nil {
-		log.Errorln("Invalid time interval.")
-		return util.ErrorCmdArg
+		return &util.CraneError{
+			Code:    util.ErrorCmdArg,
+			Message: "Invalid time interval.",
+		}
 	}
 	for {
 		fmt.Println(time.Now().String()[0:19])
 		err := Query()
-		if err != util.ErrorSuccess {
+		if err != nil {
 			return err
 		}
 		time.Sleep(time.Duration(interval.Nanoseconds()))

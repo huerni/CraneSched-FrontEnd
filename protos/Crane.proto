@@ -248,6 +248,18 @@ message ModifyCranedStateReply {
   repeated string not_modified_reasons = 4;
 }
 
+message EnableAutoPowerControlRequest {
+  uint32 uid = 1;
+  repeated string craned_ids = 2;
+  bool enable = 3;
+}
+
+message EnableAutoPowerControlReply {
+  repeated string modified_nodes = 1;
+  repeated string not_modified_nodes = 2;
+  repeated string not_modified_reasons = 3;
+}
+
 message AddAccountRequest {
   uint32 uid = 1;
   AccountInfo account = 2;
@@ -858,8 +870,9 @@ message ResetUserCredentialReply {
   repeated RichError rich_error_list = 2;
 }
 
-// The service interface performs encryption and authentication.
-service CraneCtldSecure {
+//  We need to distinguish the message sender
+//  and have some kind of authentication
+service CraneCtld {
   /* RPCs called from ccancel */
   rpc CancelTask(CancelTaskRequest) returns (CancelTaskReply);
 
@@ -873,9 +886,8 @@ service CraneCtldSecure {
   rpc QueryReservationInfo(QueryReservationInfoRequest) returns (QueryReservationInfoReply);
   rpc ModifyTask(ModifyTaskRequest) returns (ModifyTaskReply);
   rpc ModifyNode(ModifyCranedStateRequest) returns (ModifyCranedStateReply);
+  rpc EnableAutoPowerControl(EnableAutoPowerControlRequest) returns (EnableAutoPowerControlReply);
   rpc ModifyPartitionAcl(ModifyPartitionAclRequest) returns (ModifyPartitionAclReply);
-  rpc CreateReservation(CreateReservationRequest) returns (CreateReservationReply);
-  rpc DeleteReservation(DeleteReservationRequest) returns (DeleteReservationReply);
 
   /* RPCs called from cacctmgr */
   rpc AddAccount(AddAccountRequest) returns (AddAccountReply);
@@ -893,14 +905,22 @@ service CraneCtldSecure {
   rpc ModifyAccount(ModifyAccountRequest) returns (ModifyAccountReply);
   rpc ModifyUser(ModifyUserRequest) returns (ModifyUserReply);
   rpc ModifyQos(ModifyQosRequest) returns (ModifyQosReply);
+
   rpc BlockAccountOrUser(BlockAccountOrUserRequest) returns (BlockAccountOrUserReply);
+
   rpc ResetUserCredential(ResetUserCredentialRequest) returns (ResetUserCredentialReply);
+  /* RPCs called from cinfo */
+  rpc QueryClusterInfo(QueryClusterInfoRequest) returns (QueryClusterInfoReply);
+
+  /* common RPCs */
+  rpc QueryTasksInfo(QueryTasksInfoRequest) returns (QueryTasksInfoReply);
+  rpc CreateReservation(CreateReservationRequest) returns (CreateReservationReply);
+  rpc DeleteReservation(DeleteReservationRequest) returns (DeleteReservationReply);
 
   /* RPC called form plugin */
   rpc PowerStateChange(PowerStateChangeRequest) returns (PowerStateChangeReply);
 }
 
-// The service is completely open.
 service CraneCtldPlain {
   /* PRCs called from ccontrol */
   rpc QueryCranedInfo(QueryCranedInfoRequest) returns (QueryCranedInfoReply);
@@ -916,15 +936,14 @@ service CraneCtldPlain {
   rpc SignUserCertificate(SignUserCertificateRequest) returns (SignUserCertificateResponse);
 }
 
-service CraneCtldForCraned {
+service CraneCtldForInternal {
   /* RPCs called from Craned */
   rpc TaskStatusChange(TaskStatusChangeRequest) returns (TaskStatusChangeReply);
+  rpc CranedTriggerReverseConn(CranedTriggerReverseConnRequest) returns (google.protobuf.Empty);
   rpc CranedRegister(CranedRegisterRequest) returns (CranedRegisterReply);
-}
 
-service CraneCtldForCfored {
   /* RPCs called from Cfored */
-  rpc CforedStream(stream StreamCforedRequest) returns(stream StreamCtldReply);
+  rpc CforedStream(stream StreamCforedRequest) returns (stream StreamCtldReply);
 }
 
 service Craned {
@@ -947,11 +966,13 @@ service Craned {
 
   /* ----------------------------------- Called from Craned  ------------------------------------------------------ */
   rpc QueryTaskIdFromPort(QueryTaskIdFromPortRequest) returns (QueryTaskIdFromPortReply);
+  rpc QueryTaskEnvVariables(QueryTaskEnvVariablesRequest) returns (QueryTaskEnvVariablesReply);
+}
 
+service CranedForPam {
   /* ----------------------------------- Called from Pam Module  --------------------------------------------------- */
   rpc QueryTaskIdFromPortForward(QueryTaskIdFromPortForwardRequest) returns (QueryTaskIdFromPortForwardReply);
   rpc MigrateSshProcToCgroup(MigrateSshProcToCgroupRequest) returns (MigrateSshProcToCgroupReply);
-  rpc QueryTaskEnvVariables(QueryTaskEnvVariablesRequest) returns (QueryTaskEnvVariablesReply);
   rpc QueryTaskEnvVariablesForward(QueryTaskEnvVariablesForwardRequest) returns (QueryTaskEnvVariablesForwardReply);
 }
 

@@ -31,8 +31,8 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"time"
 	"strings"
+	"time"
 
 	grpccodes "google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -81,7 +81,7 @@ func GetTCPSocket(bindAddr string, config *Config) (net.Listener, error) {
 			return nil, err
 		}
 
-		cert, err := tls.LoadX509KeyPair(config.SslConfig.CforedCertFilePath, config.SslConfig.CforedKeyFilePath)
+		cert, err := tls.LoadX509KeyPair(config.SslConfig.InternalCertFilePath, config.SslConfig.InternalKeyFilePath)
 		if err != nil {
 			return nil, err
 		}
@@ -141,87 +141,55 @@ func GetUnixSocket(path string, mode fs.FileMode) (net.Listener, error) {
 	return socket, nil
 }
 
-func GetStubToCtldSecureByConfig(config *Config) protos.CraneCtldSecureClient {
+// TODO: Refactor this to return ErrCodes instead of exiting.
+func GetStubToCtldByConfig(config *Config) protos.CraneCtldClient {
 	var serverAddr string
-	var stub protos.CraneCtldSecureClient
-
-	if err := SignAndSaveUserCertificate(config); err != ErrorSuccess {
-		os.Exit(err)
-	}
-
-	serverAddr = fmt.Sprintf("%s.%s:%s",
-		config.ControlMachine, config.DomainSuffix, config.CraneCtldListenPort)
-
-	refreshCertificateFunc := func() CraneCmdError {
-		return DoSignAndSaveUserCertificate(config)
-	}
-
-	updateConnFunc := func() (*grpc.ClientConn, error) {
-		tlsConfig, err := UpdateTLSConfig(config)
-		if err != nil {
-			return nil, err
-		}
-		return grpc.Dial(serverAddr, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
-	}
-
-	tlsConfig, err := UpdateTLSConfig(config)
-	if err != nil {
-		log.Fatalf("Failed to load user certificate: %v", err)
-	}
-
-	conn, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)), grpc.WithUnaryInterceptor(RefreshCertInterceptor(refreshCertificateFunc, updateConnFunc)))
-	if err != nil {
-		log.Errorln("Cannot connect to CraneCtld: " + err.Error())
-		os.Exit(ErrorBackend)
-	}
-
-	stub = protos.NewCraneCtldSecureClient(conn)
-
-	return stub
-}
-
-func GetStubToCtldForCfored(config *Config) protos.CraneCtldForCforedClient {
-	var serverAddr string
-	var stub protos.CraneCtldForCforedClient
+	var stub protos.CraneCtldClient
 
 	if config.UseTls {
+
+		if err := SignAndSaveUserCertificate(config); err != ErrorSuccess {
+			os.Exit(err)
+		}
+
 		serverAddr = fmt.Sprintf("%s.%s:%s",
-			config.ControlMachine, config.DomainSuffix, config.CraneCtldForCforedListenPort)
-		cert, _ := tls.LoadX509KeyPair(config.SslConfig.CforedCertFilePath, config.SslConfig.CforedKeyFilePath)
+			config.ControlMachine, config.SslConfig.DomainSuffix, config.CraneCtldListenPort)
 
-		CaCertContent, err := os.ReadFile(config.SslConfig.InternalCertFilePath)
+		refreshCertificateFunc := func() CraneCmdError {
+			return DoSignAndSaveUserCertificate(config)
+		}
+
+		updateConnFunc := func() (*grpc.ClientConn, error) {
+			tlsConfig, err := UpdateTLSConfig(config)
+			if err != nil {
+				return nil, err
+			}
+			return grpc.Dial(serverAddr, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+		}
+
+		tlsConfig, err := UpdateTLSConfig(config)
 		if err != nil {
-			log.Errorln("Failed to read InternalCertFile: " + err.Error())
-			os.Exit(ErrorGeneric)
+			log.Fatalf("Failed to load user certificate: %v", err)
 		}
 
-		caPool := x509.NewCertPool()
-		if ok := caPool.AppendCertsFromPEM(CaCertContent); !ok {
-			log.Errorln("Failed to append cert Content.")
-			os.Exit(ErrorGeneric)
-		}
-
-		creds := credentials.NewTLS(&tls.Config{
-			Certificates: []tls.Certificate{cert},
-			RootCAs:      caPool,
-		})
-
-		conn, err := grpc.Dial(serverAddr,
-			grpc.WithTransportCredentials(creds),
+		conn, err := grpc.NewClient(serverAddr,
+			grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),
+			grpc.WithUnaryInterceptor(
+				RefreshCertInterceptor(refreshCertificateFunc, updateConnFunc)),
 			grpc.WithKeepaliveParams(ClientKeepAliveParams),
 			grpc.WithConnectParams(ClientConnectParams),
-			grpc.WithIdleTimeout(time.Duration(math.MaxInt64)), // GRPC_ARG_CLIENT_IDLE_TIMEOUT_MS
+			grpc.WithIdleTimeout(time.Duration(math.MaxInt64)),
 		)
 		if err != nil {
 			log.Errorln("Cannot connect to CraneCtld: " + err.Error())
 			os.Exit(ErrorBackend)
 		}
 
-		stub = protos.NewCraneCtldForCforedClient(conn)
+		stub = protos.NewCraneCtldClient(conn)
 	} else {
-		serverAddr = fmt.Sprintf("%s:%s", config.ControlMachine, config.CraneCtldForCforedListenPort)
+		serverAddr = fmt.Sprintf("%s:%s", config.ControlMachine, config.CraneCtldListenPort)
 
-		conn, err := grpc.Dial(serverAddr,
+		conn, err := grpc.NewClient(serverAddr,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			grpc.WithKeepaliveParams(ClientKeepAliveParams),
 			grpc.WithConnectParams(ClientConnectParams),
@@ -232,7 +200,84 @@ func GetStubToCtldForCfored(config *Config) protos.CraneCtldForCforedClient {
 			os.Exit(ErrorBackend)
 		}
 
-		stub = protos.NewCraneCtldForCforedClient(conn)
+		stub = protos.NewCraneCtldClient(conn)
+	}
+
+	return stub
+}
+
+func GetStubToCtldForInternalByConfig(config *Config) protos.CraneCtldForInternalClient {
+	var serverAddr string
+	var stub protos.CraneCtldForInternalClient
+
+	if config.UseTls {
+		serverAddr = fmt.Sprintf("%s.%s:%s",
+			config.ControlMachine, config.SslConfig.DomainSuffix, config.CraneCtldForInternalListenPort)
+
+		ServerCertContent, err := os.ReadFile(config.SslConfig.InternalCertFilePath)
+		if err != nil {
+			log.Errorln("Read server certificate error: " + err.Error())
+			os.Exit(ErrorGeneric)
+		}
+
+		ServerKeyContent, err := os.ReadFile(config.SslConfig.InternalKeyFilePath)
+		if err != nil {
+			log.Errorln("Read server key error: " + err.Error())
+			os.Exit(ErrorGeneric)
+		}
+
+		CaCertContent, err := os.ReadFile(config.SslConfig.InternalCaFilePath)
+		if err != nil {
+			log.Errorln("Read CA certifacate error: " + err.Error())
+			os.Exit(ErrorGeneric)
+		}
+
+		tlsKeyPair, err := tls.X509KeyPair(ServerCertContent, ServerKeyContent)
+		if err != nil {
+			log.Errorln("tlsKeyPair error: " + err.Error())
+			os.Exit(ErrorGeneric)
+		}
+
+		caPool := x509.NewCertPool()
+		if ok := caPool.AppendCertsFromPEM(CaCertContent); !ok {
+			log.Errorln("AppendCertsFromPEM error: " + err.Error())
+			os.Exit(ErrorGeneric)
+		}
+
+		creds := credentials.NewTLS(&tls.Config{
+			Certificates:       []tls.Certificate{tlsKeyPair},
+			RootCAs:            caPool,
+			InsecureSkipVerify: false,
+			// NextProtos is a list of supported application level protocols, in
+			// order of preference.
+			NextProtos: []string{"h2"},
+		})
+
+		conn, err := grpc.NewClient(serverAddr,
+			grpc.WithTransportCredentials(creds),
+			grpc.WithKeepaliveParams(ClientKeepAliveParams),
+			grpc.WithConnectParams(ClientConnectParams),
+			grpc.WithIdleTimeout(time.Duration(math.MaxInt64)))
+		if err != nil {
+			log.Errorln("Cannot connect to CraneCtld: " + err.Error())
+			os.Exit(ErrorBackend)
+		}
+
+		stub = protos.NewCraneCtldForInternalClient(conn)
+	} else {
+		serverAddr = fmt.Sprintf("%s:%s", config.ControlMachine, config.CraneCtldForInternalListenPort)
+
+		conn, err := grpc.NewClient(serverAddr,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithKeepaliveParams(ClientKeepAliveParams),
+			grpc.WithConnectParams(ClientConnectParams),
+			grpc.WithIdleTimeout(time.Duration(math.MaxInt64)))
+		if err != nil {
+			log.Errorf("Cannot connect to CraneCtld %s: %s", serverAddr, err.Error())
+			os.Exit(ErrorBackend)
+		}
+
+		stub = protos.NewCraneCtldForInternalClient(conn)
 	}
 
 	return stub

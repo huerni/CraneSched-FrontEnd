@@ -78,7 +78,7 @@ var (
 			// if they do not declare their own.
 			util.DetectNetworkProxy()
 			config := util.ParseConfig(FlagConfigFilePath)
-			stub = util.GetStubToCtldSecureByConfig(config)
+			stub = util.GetStubToCtldByConfig(config)
 			userUid = uint32(os.Getuid())
 		},
 	}

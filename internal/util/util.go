@@ -26,28 +26,26 @@ import (
 )
 
 type Config struct {
-	ClusterName                  string            `yaml:"ClusterName"`
-	ControlMachine               string            `yaml:"ControlMachine"`
-	CraneCtldListenPort          string            `yaml:"CraneCtldListenPort"`
-	CraneCtldForCforedListenPort string            `yaml:"CraneCtldForCforedListenPort"`
-	CraneCtldPlainListenPort     string            `yaml:"CraneCtldPlainListenPort"`
-	CranedNodeList               []ConfigNodesList `yaml:"Nodes"`
+	ClusterName                    string `yaml:"ClusterName"`
+	ControlMachine                 string `yaml:"ControlMachine"`
+	CraneCtldListenPort            string `yaml:"CraneCtldListenPort"`
+	CraneCtldForInternalListenPort string `yaml:"CraneCtldForInternalListenPort"`
+	CraneCtldPlainListenPort       string
+	CranedNodeList                 []ConfigNodesList `yaml:"Nodes"`
 
 	UseTls               bool         `yaml:"UseTls"`
 	SslConfig            SSLConfig    `yaml:"SSL"`
-	DomainSuffix         string       `yaml:"DomainSuffix"`
 	CraneBaseDir         string       `yaml:"CraneBaseDir"`
 	CranedCforedSockPath string       `yaml:"CranedCforedSockPath"`
 	Plugin               PluginConfig `yaml:"Plugin"`
 }
 
 type SSLConfig struct {
-	ExternalCertFilePath string `yaml:"CranectldExternalCertFilePath"`
-	InternalCertFilePath string `yaml:"CranectldInternalCertFilePath"`
-	ServerKeyFilePath    string `yaml:"ServerKeyFilePath"`
-	CforedCertFilePath   string `yaml:"CforedCertFilePath"`
-	CforedKeyFilePath    string `yaml:"CforedKeyFilePath"`
+	ExternalCertFilePath string `yaml:"ExternalCertFilePath"`
+	InternalCertFilePath string `yaml:"InternalCertFilePath"`
+	InternalKeyFilePath  string `yaml:"InternalKeyFilePath"`
 	InternalCaFilePath   string `yaml:"InternalCaFilePath"`
+	DomainSuffix         string `yaml:"DomainSuffix"`
 }
 
 type PluginConfig struct {
@@ -95,6 +93,12 @@ const (
 	MaxJobTimeStamp = 253402300799 // 9999-12-31 23:59:59
 
 	MaxEntityNameLength = 30
+)
+
+// Param Options
+const (
+	OpenModeAppend   = "append"
+	OpenModeTruncate = "truncate"
 )
 
 func SplitEnvironEntry(env *string) (string, string, bool) {
