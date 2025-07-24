@@ -341,7 +341,7 @@ func GrpcErrorPrintf(err error, format string, a ...any) {
 		if rpcErr.Code() == grpccodes.Unavailable {
 			log.Errorf("%s: Connection to CraneCtld is broken.", s)
 		} else if rpcErr.Code() == grpccodes.Unauthenticated {
-			log.Errorf("%s: Authentication failed.", s)
+			log.Errorf("%s: Access denied.", s)
 		} else {
 			log.Errorf("%s: gRPC error code %s.", s, rpcErr.String())
 		}
@@ -365,7 +365,8 @@ func RefreshCertInterceptor(refreshCertificateFunc func() error, updateConnFunc 
 		}
 
 		rpcErr, _ := status.FromError(err)
-		if (rpcErr.Code() == grpccodes.Unavailable && strings.Contains(rpcErr.Message(), "certificate")) || rpcErr.Code() == grpccodes.Unauthenticated {
+		if (rpcErr.Code() == grpccodes.Unavailable && strings.Contains(rpcErr.Message(), "certificate")) ||
+			rpcErr.Code() == grpccodes.Unauthenticated && rpcErr.Message() != "Certificate is empty" {
 			pem_path, err := ExpandPath(DefaultUserConfigPath + "/user.pem")
 			if err != nil {
 				return err
@@ -373,7 +374,7 @@ func RefreshCertInterceptor(refreshCertificateFunc func() error, updateConnFunc 
 			RemoveFileIfExists(pem_path)
 
 			if refreshErr := refreshCertificateFunc(); refreshErr != nil {
-				log.Errorf("Failed to authenticate user: %s", refreshErr.Error())
+				log.Errorf(refreshErr.Error())
 				return refreshErr
 			}
 
