@@ -164,7 +164,7 @@ func GetStubToCtldByConfig(config *Config) protos.CraneCtldClient {
 			if err != nil {
 				return nil, err
 			}
-			return grpc.Dial(serverAddr, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+			return grpc.NewClient(serverAddr, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 		}
 
 		tlsConfig, err := UpdateTLSConfig(config)

@@ -26,11 +26,11 @@ import (
 )
 
 type Config struct {
-	ClusterName                    string `yaml:"ClusterName"`
-	ControlMachine                 string `yaml:"ControlMachine"`
-	CraneCtldListenPort            string `yaml:"CraneCtldListenPort"`
-	CraneCtldForInternalListenPort string `yaml:"CraneCtldForInternalListenPort"`
-	CraneCtldPlainListenPort       string
+	ClusterName                    string            `yaml:"ClusterName"`
+	ControlMachine                 string            `yaml:"ControlMachine"`
+	CraneCtldListenPort            string            `yaml:"CraneCtldListenPort"`
+	CraneCtldForInternalListenPort string            `yaml:"CraneCtldForInternalListenPort"`
+	CraneCtldPlainListenPort       string            `yaml:"CraneCtldPlainListenPort"`
 	CranedNodeList                 []ConfigNodesList `yaml:"Nodes"`
 
 	UseTls               bool         `yaml:"UseTls"`
