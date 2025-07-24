@@ -862,7 +862,8 @@ message SignUserCertificateResponse {
 }
 
 message ResetUserCredentialRequest {
-  repeated string user_list = 1;
+  uint32 uid = 1;
+  repeated string user_list = 2;
 }
 
 message ResetUserCredentialReply {

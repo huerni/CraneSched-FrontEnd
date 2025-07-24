@@ -1280,6 +1280,11 @@ func SortRecords(records []*ResourceUsageRecord) ([]*ResourceUsageRecord, error)
 func ResetUserCredential(value string) util.CraneCmdError {
 	var userList []string
 
+	if value == "" {
+		log.Errorf("User is empty")
+		return util.ErrorCmdArg
+	}
+
 	if value != "all" {
 		var err error
 		userList, err = util.ParseStringParamList(value, ",")
@@ -1289,7 +1294,7 @@ func ResetUserCredential(value string) util.CraneCmdError {
 		}
 	}
 
-	req := protos.ResetUserCredentialRequest{UserList: userList}
+	req := protos.ResetUserCredentialRequest{Uid: userUid, UserList: userList}
 	reply, err := stub.ResetUserCredential(context.Background(), &req)
 	if err != nil {
 		util.GrpcErrorPrintf(err, "Failed to reset user credential")
