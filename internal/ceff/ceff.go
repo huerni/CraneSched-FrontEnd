@@ -37,7 +37,7 @@ import (
 )
 
 var (
-	stub     protos.CraneCtldPlainClient
+	stub     protos.CraneCtldClient
 	dbConfig *util.InfluxDbConfig
 )
 

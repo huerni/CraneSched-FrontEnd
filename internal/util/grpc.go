@@ -147,15 +147,10 @@ func GetStubToCtldByConfig(config *Config) protos.CraneCtldClient {
 	var stub protos.CraneCtldClient
 
 	if config.UseTls {
-
-		if err := SignAndSaveUserCertificate(config); err != ErrorSuccess {
-			os.Exit(err)
-		}
-
 		serverAddr = fmt.Sprintf("%s.%s:%s",
 			config.ControlMachine, config.SslConfig.DomainSuffix, config.CraneCtldListenPort)
 
-		refreshCertificateFunc := func() CraneCmdError {
+		refreshCertificateFunc := func() error {
 			return DoSignAndSaveUserCertificate(config)
 		}
 
@@ -174,8 +169,7 @@ func GetStubToCtldByConfig(config *Config) protos.CraneCtldClient {
 
 		conn, err := grpc.NewClient(serverAddr,
 			grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),
-			grpc.WithUnaryInterceptor(
-				RefreshCertInterceptor(refreshCertificateFunc, updateConnFunc)),
+			grpc.WithUnaryInterceptor(RefreshCertInterceptor(refreshCertificateFunc, updateConnFunc)),
 			grpc.WithKeepaliveParams(ClientKeepAliveParams),
 			grpc.WithConnectParams(ClientConnectParams),
 			grpc.WithIdleTimeout(time.Duration(math.MaxInt64)),
@@ -283,24 +277,24 @@ func GetStubToCtldForInternalByConfig(config *Config) protos.CraneCtldForInterna
 	return stub
 }
 
-func GetStubToCtldPlain(config *Config) protos.CraneCtldPlainClient {
-	var serverAddr string
-	var stub protos.CraneCtldPlainClient
+func UpdateTLSConfig(config *Config) (*tls.Config, error) {
 
-	serverAddr = fmt.Sprintf("%s:%s", config.ControlMachine, config.CraneCtldPlainListenPort)
+	if err := SignAndSaveUserCertificate(config); err != nil {
+		caCert, err := os.ReadFile(config.SslConfig.ExternalCaFilePath)
+		if err != nil {
+			return nil, err
+		}
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
 
-	conn, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Errorf("Cannot connect to CraneCtld %s: %s", serverAddr, err.Error())
-		os.Exit(ErrorBackend)
+		tlsConfig := &tls.Config{
+			RootCAs:    caCertPool,
+			ServerName: "*." + config.SslConfig.DomainSuffix,
+		}
+
+		return tlsConfig, nil
 	}
 
-	stub = protos.NewCraneCtldPlainClient(conn)
-
-	return stub
-}
-
-func UpdateTLSConfig(config *Config) (*tls.Config, error) {
 	userKeyPath, err := ExpandPath(DefaultUserConfigPath + "/user.key")
 	if err != nil {
 		return nil, err
@@ -354,7 +348,7 @@ func GrpcErrorPrintf(err error, format string, a ...any) {
 	}
 }
 
-func RefreshCertInterceptor(refreshCertificateFunc func() CraneCmdError, updateConnFunc func() (*grpc.ClientConn, error)) grpc.UnaryClientInterceptor {
+func RefreshCertInterceptor(refreshCertificateFunc func() error, updateConnFunc func() (*grpc.ClientConn, error)) grpc.UnaryClientInterceptor {
 	return func(
 		ctx context.Context,
 		method string,
@@ -374,16 +368,18 @@ func RefreshCertInterceptor(refreshCertificateFunc func() CraneCmdError, updateC
 		if (rpcErr.Code() == grpccodes.Unavailable && strings.Contains(rpcErr.Message(), "certificate")) || rpcErr.Code() == grpccodes.Unauthenticated {
 			pem_path, err := ExpandPath(DefaultUserConfigPath + "/user.pem")
 			if err != nil {
-				return fmt.Errorf("failed to refresh certificate")
+				return err
 			}
 			RemoveFileIfExists(pem_path)
-			if refreshErr := refreshCertificateFunc(); refreshErr != ErrorSuccess {
-				return fmt.Errorf("failed to refresh certificate")
+
+			if refreshErr := refreshCertificateFunc(); refreshErr != nil {
+				log.Errorf("Failed to authenticate user: %s", refreshErr.Error())
+				return refreshErr
 			}
 
 			newConn, err := updateConnFunc()
 			if err != nil {
-				return fmt.Errorf("failed to refresh certificate")
+				return err
 			}
 			cc.Close()
 			err = invoker(ctx, method, req, reply, newConn, opts...)

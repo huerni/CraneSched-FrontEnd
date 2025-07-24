@@ -30,7 +30,6 @@ type Config struct {
 	ControlMachine                 string            `yaml:"ControlMachine"`
 	CraneCtldListenPort            string            `yaml:"CraneCtldListenPort"`
 	CraneCtldForInternalListenPort string            `yaml:"CraneCtldForInternalListenPort"`
-	CraneCtldPlainListenPort       string            `yaml:"CraneCtldPlainListenPort"`
 	CranedNodeList                 []ConfigNodesList `yaml:"Nodes"`
 
 	UseTls               bool         `yaml:"UseTls"`
@@ -41,10 +40,10 @@ type Config struct {
 }
 
 type SSLConfig struct {
-	ExternalCertFilePath string `yaml:"ExternalCertFilePath"`
 	InternalCertFilePath string `yaml:"InternalCertFilePath"`
 	InternalKeyFilePath  string `yaml:"InternalKeyFilePath"`
 	InternalCaFilePath   string `yaml:"InternalCaFilePath"`
+	ExternalCaFilePath   string `yaml:"ExternalCaFilePath"`
 	DomainSuffix         string `yaml:"DomainSuffix"`
 }
 
