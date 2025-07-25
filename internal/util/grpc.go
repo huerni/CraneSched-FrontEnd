@@ -32,6 +32,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	grpccodes "google.golang.org/grpc/codes"
@@ -68,6 +69,52 @@ var ClientConnectParams = grpc.ConnectParams{
 		//No min delay available GRPC_ARG_MIN_RECONNECT_BACKOFF_MS
 	},
 }
+
+type UnixPeerAuthInfo struct {
+	UID uint32
+	GID uint32
+	PID int32
+}
+
+func (a *UnixPeerAuthInfo) AuthType() string { return "unix-peer" }
+
+type UnixPeerCredentials struct{}
+
+func (c *UnixPeerCredentials) ServerHandshake(conn net.Conn) (net.Conn, credentials.AuthInfo, error) {
+
+	uconn, ok := conn.(*net.UnixConn)
+	if !ok {
+		return nil, nil, fmt.Errorf("not a unix socket")
+	}
+
+	file, err := uconn.File()
+	if err != nil {
+		return nil, nil, err
+	}
+	defer file.Close()
+
+	ucred, err := syscall.GetsockoptUcred(int(file.Fd()), syscall.SOL_SOCKET, syscall.SO_PEERCRED)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return conn, &UnixPeerAuthInfo{
+		UID: ucred.Uid,
+		GID: ucred.Gid,
+		PID: ucred.Pid,
+	}, nil
+}
+
+func (c *UnixPeerCredentials) ClientHandshake(ctx context.Context, addr string, conn net.Conn) (net.Conn, credentials.AuthInfo, error) {
+
+	return conn, &UnixPeerAuthInfo{}, nil
+}
+
+func (c *UnixPeerCredentials) Info() credentials.ProtocolInfo {
+	return credentials.ProtocolInfo{SecurityProtocol: "unix-peer"}
+}
+func (c *UnixPeerCredentials) Clone() credentials.TransportCredentials { return c }
+func (c *UnixPeerCredentials) OverrideServerName(s string) error       { return nil }
 
 func GetTCPSocket(bindAddr string, config *Config) (net.Listener, error) {
 	if config.UseTls {
